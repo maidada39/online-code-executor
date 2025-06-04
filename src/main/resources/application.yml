@@ -1,0 +1,13 @@
+server:
+  port: 9090
+
+knife4j:
+  enable: true
+  openapi:
+    title: 接口文档
+    version: 1.0
+    group:
+      default:
+        api-rule: package
+        api-rule-resources:
+          - com.maidada.onlinecodeexecutor.executor
