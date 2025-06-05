@@ -5,6 +5,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.Resource;
+
 /**
  * @author wulinxuan
  * @date 2025/6/5 0:50
@@ -12,6 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("code")
 public class ExecutorController {
+
+    @Resource
+    private DockerSandBox dockerSandBox;
 
     @PostMapping("exec")
     public ExecuteResponse execute(@RequestBody ExecuteRequest request) {
@@ -22,6 +27,6 @@ public class ExecutorController {
                     .errorMsg("不支持的语言")
                     .build();
         }
-        return DockerSandBox.execute(languageCmdEnum, request.getCode());
+        return dockerSandBox.execute(languageCmdEnum, request.getCode());
     }
 }

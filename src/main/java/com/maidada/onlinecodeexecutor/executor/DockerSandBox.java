@@ -10,22 +10,41 @@ import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.StreamType;
 import com.github.dockerjava.core.DockerClientBuilder;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author wulinxuan
  * @date 2025/6/5 0:05
  */
+@Data
 @Slf4j
+@Configuration
+@ConfigurationProperties(prefix = "codesandbox.config")
 public class DockerSandBox {
 
     private static final DockerClient DOCKER_CLIENT = DockerClientBuilder.getInstance().build();
+
+    private String imageName = "codesandbox:latest";
+
+    private long memory = 50 * 1024 * 1024L;
+
+    private long memorySwap = 0;
+
+    private long cpuCount = 1;
+
+    private long timeout = 3;
+
+    private TimeUnit timeUnit = TimeUnit.SECONDS;
 
     /**
      * 执行代码
@@ -34,7 +53,7 @@ public class DockerSandBox {
      * @param code            代码
      * @return {@link ExecuteResponse}
      */
-    public static ExecuteResponse execute(LanguageCmdEnum languageCmdEnum, String code) {
+    public ExecuteResponse execute(LanguageCmdEnum languageCmdEnum, String code) {
 
         // 写入文件
         String userDir = System.getProperty("user.dir");
@@ -86,14 +105,14 @@ public class DockerSandBox {
      * @param codeFile 代码文件
      * @return {@link String }
      */
-    private static String createContainer(String codeFile) {
-        CreateContainerCmd containerCmd = DOCKER_CLIENT.createContainerCmd("codesandbox:latest");
+    private String createContainer(String codeFile) {
+        CreateContainerCmd containerCmd = DOCKER_CLIENT.createContainerCmd(this.imageName);
 
         // 基础配置
         HostConfig hostConfig = new HostConfig();
-        hostConfig.withMemory(50 * 1024 * 1024L);
-        hostConfig.withMemorySwap(0L);
-        hostConfig.withCpuCount(1L);
+        hostConfig.withMemory(this.memory);
+        hostConfig.withMemorySwap(this.memorySwap);
+        hostConfig.withCpuCount(this.cpuCount);
 
         // 更多配置
         CreateContainerResponse execResponse = containerCmd.withHostConfig(hostConfig)
@@ -124,7 +143,7 @@ public class DockerSandBox {
      * @param cmd         cmd
      * @return {@link ExecuteResponse }
      */
-    private static ExecuteResponse executeCmd(String containerId, String[] cmd) {
+    private ExecuteResponse executeCmd(String containerId, String[] cmd) {
         // 正常返回信息
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         // 异常返回信息
@@ -132,7 +151,14 @@ public class DockerSandBox {
 
         // 结果
         final boolean[] result = {true};
+        final boolean[] timeout = {true};
         try (ResultCallback.Adapter<Frame> frameAdapter = new ResultCallback.Adapter<Frame>() {
+            @Override
+            public void onComplete() {
+                timeout[0] = false;
+                super.onComplete();
+            }
+
             @Override
             public void onNext(Frame frame) {
                 StreamType streamType = frame.getStreamType();
@@ -164,7 +190,14 @@ public class DockerSandBox {
                     .exec();
 
             String execId = execCmdResponse.getId();
-            DOCKER_CLIENT.execStartCmd(execId).exec(frameAdapter).awaitCompletion();
+            DOCKER_CLIENT.execStartCmd(execId).exec(frameAdapter).awaitCompletion(3, TimeUnit.SECONDS);
+
+            if (timeout[0]) {
+                return ExecuteResponse.builder()
+                        .success(false)
+                        .errorMsg("执行超时")
+                        .build();
+            }
 
             return ExecuteResponse.builder()
                     .success(result[0])
@@ -186,7 +219,7 @@ public class DockerSandBox {
      * @param userCodePath 用户代码路径
      * @param containerId  容器 ID
      */
-    private static void cleanFileAndContainer(String userCodePath, String containerId) {
+    private void cleanFileAndContainer(String userCodePath, String containerId) {
         // 清理临时目录
         FileUtil.del(userCodePath);
 
