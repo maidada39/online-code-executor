@@ -1,6 +1,7 @@
 package com.maidada.onlinecodeexecutor.executor;
 
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ExecutorController {
 
     @PostMapping("exec")
-    public ExecuteResponse execute(ExecuteRequest request) {
+    public ExecuteResponse execute(@RequestBody ExecuteRequest request) {
         LanguageCmdEnum languageCmdEnum = LanguageCmdEnum.getEnumByValue(request.getLanguage());
         if (languageCmdEnum == null) {
             return ExecuteResponse.builder()

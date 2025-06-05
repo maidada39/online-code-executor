@@ -91,7 +91,7 @@ public class DockerSandBox {
 
         // 基础配置
         HostConfig hostConfig = new HostConfig();
-        hostConfig.withMemory(60 * 1000 * 1000L);
+        hostConfig.withMemory(50 * 1024 * 1024L);
         hostConfig.withMemorySwap(0L);
         hostConfig.withCpuCount(1L);
 
