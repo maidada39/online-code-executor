@@ -11,3 +11,7 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.maidada.onlinecodeexecutor.executor
+
+codesandbox:
+  config:
+    timeout: 5
